@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <h1>Borrow from tonight?</h1>
+    <p>This releases part of the scheduled reservation, runs the ad-hoc URLs now, and shrinks tonight's scheduled run. The Run Log will flag <strong>Borrowed From Scheduled</strong>.</p>
+    <button class="danger" onclick="go()">Yes, borrow and run</button>
+    <button class="secondary" onclick="google.script.host.close()">Cancel</button>
+    <div id="status" class="status"></div>
+    <script>
+      var rawUrls = <?!= JSON.stringify(rawUrls) ?>;
+      function go() {
+        document.getElementById('status').textContent = 'Borrowing…';
+        google.script.run
+          .withSuccessHandler(function (res) {
+            document.getElementById('status').textContent = res.message || 'Done.';
+            setTimeout(function () { google.script.host.close(); }, 1200);
+          })
+          .withFailureHandler(function (err) {
+            document.getElementById('status').textContent = err.message;
+          })
+          .adhocBorrowFromTonight(rawUrls);
+      }
+    </script>
+  </body>
+</html>

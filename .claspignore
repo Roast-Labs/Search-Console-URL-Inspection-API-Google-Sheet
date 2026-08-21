@@ -1,0 +1,5 @@
+**/.git/**
+**/.gitignore
+**/.claspignore
+**/.clasp.json.example
+**/*.md

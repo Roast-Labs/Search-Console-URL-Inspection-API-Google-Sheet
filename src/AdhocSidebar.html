@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <h1>Run Ad-hoc</h1>
+    <p class="muted">Paste URLs (one per line) or they are pre-filled from the current URLs selection.</p>
+    <div class="card">
+      <div>Used today: <strong id="used">–</strong> · Reserved: <strong id="reserved">–</strong></div>
+      <div>Remaining: <strong id="remaining">–</strong> of cap <strong id="cap">–</strong></div>
+      <div class="muted" id="datePt"></div>
+    </div>
+    <label for="urls">URLs</label>
+    <textarea id="urls" placeholder="https://example.com/page"></textarea>
+    <button onclick="runNow()">Run Ad-hoc</button>
+    <div id="status" class="status"></div>
+    <script>
+      function $(id) { return document.getElementById(id); }
+      google.script.run.withSuccessHandler(function (ctx) {
+        $('urls').value = (ctx.selected || []).join('\n');
+        $('used').textContent = ctx.quota.used;
+        $('reserved').textContent = ctx.quota.reserved;
+        $('remaining').textContent = ctx.quota.remaining;
+        $('cap').textContent = ctx.quota.cap;
+        $('datePt').textContent = 'Pacific date ' + ctx.quota.datePt;
+      }).getAdhocContext();
+
+      function runNow() {
+        $('status').textContent = 'Checking quota…';
+        google.script.run
+          .withSuccessHandler(function (res) {
+            if (res && res.needsWarning) {
+              google.script.run.showQuotaWarningDialog($('urls').value);
+              $('status').textContent = 'Not enough remaining quota — see the dialog.';
+              return;
+            }
+            $('status').textContent = (res && res.message) || 'Started.';
+          })
+          .withFailureHandler(function (err) { $('status').textContent = err.message; })
+          .runAdhocNow($('urls').value);
+      }
+    </script>
+  </body>
+</html>

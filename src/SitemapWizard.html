@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <h1>Import from sitemap</h1>
+
+    <div id="step1" class="step active">
+      <p>Two sources are supported. Search Console lists sitemaps already submitted for this property. A direct URL is for staging or unsubmitted files.</p>
+      <label>Source</label>
+      <select id="source" onchange="toggleSource()">
+        <option value="gsc">Search Console submitted sitemaps</option>
+        <option value="url">Direct sitemap URL</option>
+      </select>
+      <div id="gscBox">
+        <button class="secondary" onclick="loadGsc()">List submitted sitemaps</button>
+        <div id="gscList"></div>
+      </div>
+      <div id="urlBox" class="hidden">
+        <label for="sitemapUrl">Sitemap URL (.xml or .xml.gz)</label>
+        <input id="sitemapUrl" type="text" placeholder="https://example.com/sitemap.xml">
+      </div>
+      <div class="row">
+        <button onclick="fetchNow()">Fetch</button>
+      </div>
+      <div id="status1" class="status"></div>
+    </div>
+
+    <div id="step2" class="step">
+      <div class="card" id="found"></div>
+      <label>Include path regex (optional)</label>
+      <input id="includeRe" type="text" placeholder="/blog/">
+      <label>Exclude path regex (optional)</label>
+      <input id="excludeRe" type="text" placeholder="/tag/">
+      <button onclick="applyFilter()">Apply filter</button>
+      <div id="status2" class="status"></div>
+      <h2>Section mapping</h2>
+      <p class="muted">Derived from the first path segment. Edit the right-hand name before commit.</p>
+      <div id="sections"></div>
+      <label>Default frequency</label>
+      <select id="freq">
+        <option>Daily</option>
+        <option selected>Weekly</option>
+        <option>Monthly</option>
+        <option>Ad-hoc</option>
+      </select>
+      <label>Default tags</label>
+      <input id="tags" type="text" placeholder="core, template">
+      <label><input type="checkbox" id="active" checked> Active</label>
+      <button onclick="preview()">Preview reconciliation</button>
+    </div>
+
+    <div id="step3" class="step">
+      <div class="card" id="preview"></div>
+      <p>Orphaned URLs are flagged, never deleted. A URL dropping out of the sitemap is often the most useful signal this tool produces.</p>
+      <button onclick="commit()">Commit</button>
+      <button class="secondary" onclick="showStep(2)">Back</button>
+      <div id="status3" class="status"></div>
+    </div>
+
+    <script>
+      var gscPath = '';
+      var sectionState = [];
+      function $(id) { return document.getElementById(id); }
+      function showStep(n) {
+        document.querySelectorAll('.step').forEach(function (el) { el.classList.remove('active'); });
+        $('step' + n).classList.add('active');
+      }
+      function toggleSource() {
+        var gsc = $('source').value === 'gsc';
+        $('gscBox').classList.toggle('hidden', !gsc);
+        $('urlBox').classList.toggle('hidden', gsc);
+      }
+      function loadGsc() {
+        $('status1').textContent = 'Listing…';
+        google.script.run.withSuccessHandler(function (list) {
+          var box = $('gscList');
+          box.innerHTML = '';
+          (list || []).forEach(function (s) {
+            var div = document.createElement('div');
+            div.className = 'site';
+            div.textContent = s.path + (s.isSitemapsIndex ? ' (index)' : '');
+            div.onclick = function () {
+              document.querySelectorAll('#gscList .site').forEach(function (el) { el.classList.remove('selected'); });
+              div.classList.add('selected');
+              gscPath = s.path;
+            };
+            box.appendChild(div);
+          });
+          $('status1').textContent = (list || []).length ? 'Select a sitemap, then Fetch.' : 'No submitted sitemaps.';
+        }).withFailureHandler(function (err) { $('status1').textContent = err.message; })
+          .listGscSitemapsForUi();
+      }
+      function fetchNow() {
+        $('status1').textContent = 'Fetching and parsing (this can take a minute on large indexes)…';
+        var src = $('source').value;
+        var runner = google.script.run
+          .withSuccessHandler(onFetched)
+          .withFailureHandler(function (err) { $('status1').textContent = err.message; });
+        if (src === 'gsc') {
+          if (!gscPath) { $('status1').textContent = 'Choose a submitted sitemap first.'; return; }
+          runner.startSitemapImportFromGsc(gscPath);
+        } else {
+          runner.startSitemapImportFromUrl($('sitemapUrl').value);
+        }
+      }
+      function onFetched(info) {
+        $('found').innerHTML = 'Found <strong>' + info.found + '</strong> URL(s). In property: <strong>' +
+          info.inProperty + '</strong>. Dropped: ' + info.dropped + '.';
+        sectionState = info.sections || [];
+        renderSections();
+        showStep(2);
+      }
+      function renderSections() {
+        var box = $('sections');
+        box.innerHTML = '';
+        sectionState.forEach(function (s, i) {
+          var row = document.createElement('div');
+          row.className = 'row';
+          row.innerHTML = '<span class="muted">' + s.count + '</span> ';
+          var left = document.createElement('code');
+          left.textContent = s.section;
+          var input = document.createElement('input');
+          input.type = 'text';
+          input.value = s.section;
+          input.dataset.i = String(i);
+          input.onchange = function () { sectionState[i].mapped = input.value; };
+          row.appendChild(left);
+          row.appendChild(input);
+          box.appendChild(row);
+        });
+      }
+      function applyFilter() {
+        $('status2').textContent = 'Filtering…';
+        google.script.run.withSuccessHandler(function (r) {
+          $('status2').textContent = 'Kept ' + r.kept + ' of ' + r.total + '.';
+        }).withFailureHandler(function (err) { $('status2').textContent = err.message; })
+          .filterImport($('includeRe').value, $('excludeRe').value);
+      }
+      function mapping() {
+        var map = {};
+        sectionState.forEach(function (s) {
+          map[s.section] = s.mapped || s.section;
+        });
+        return map;
+      }
+      function preview() {
+        $('status2').textContent = 'Building preview…';
+        google.script.run.withSuccessHandler(function () {
+          google.script.run.withSuccessHandler(function (p) {
+            $('preview').innerHTML =
+              '<div class="stat">' + p.newCount + '</div> new — will be added<br>' +
+              '<strong>' + p.existingCount + '</strong> existing — already in the sheet, unchanged<br>' +
+              '<strong>' + p.orphanedCount + '</strong> orphaned — in the sheet but absent from this sitemap';
+            showStep(3);
+          }).previewReconciliation({
+            frequency: $('freq').value,
+            tags: $('tags').value,
+            active: $('active').checked
+          });
+        }).withFailureHandler(function (err) { $('status2').textContent = err.message; })
+          .applySectionMap(mapping());
+      }
+      function commit() {
+        $('status3').textContent = 'Committing…';
+        google.script.run.withSuccessHandler(function (r) {
+          $('status3').innerHTML = 'Added ' + r.added + ', left ' + r.existing +
+            ' unchanged, flagged ' + r.orphaned + ' orphaned. <button onclick="google.script.host.close()">Close</button>';
+        }).withFailureHandler(function (err) { $('status3').textContent = err.message; })
+          .commitSitemapImport({
+            frequency: $('freq').value,
+            tags: $('tags').value,
+            active: $('active').checked
+          });
+      }
+    </script>
+  </body>
+</html>

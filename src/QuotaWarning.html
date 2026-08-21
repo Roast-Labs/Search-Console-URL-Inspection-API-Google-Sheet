@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <h1>Not enough quota</h1>
+    <div class="card warn">
+      <p>You've asked for <strong id="requested"></strong> checks.</p>
+      <p><strong id="used"></strong> used today. <strong id="reserved"></strong> reserved for tonight's scheduled run.</p>
+      <p>Only <strong id="remaining"></strong> remaining.</p>
+    </div>
+    <p class="muted">Pacific-date ledger. Borrowing shrinks tonight's scheduled run and is logged.</p>
+    <button onclick="act('trim')">Trim to fit</button>
+    <button id="borrowBtn" class="secondary" onclick="borrow()">Borrow from tonight</button>
+    <button class="secondary" onclick="act('queue')">Queue for tomorrow</button>
+    <div id="status" class="status"></div>
+    <script>
+      var plan = <?!= planJson ?>;
+      var rawUrls = <?!= JSON.stringify(rawUrls) ?>;
+      document.getElementById('requested').textContent = plan.requested;
+      document.getElementById('used').textContent = plan.used;
+      document.getElementById('reserved').textContent = plan.reserved;
+      document.getElementById('remaining').textContent = plan.remaining;
+      if (!plan.borrowAllowed) {
+        document.getElementById('borrowBtn').style.display = 'none';
+      }
+      function act(which) {
+        document.getElementById('status').textContent = 'Working…';
+        var runner = google.script.run.withSuccessHandler(done).withFailureHandler(fail);
+        if (which === 'trim') runner.adhocTrimToFit(rawUrls);
+        else runner.adhocQueueTomorrow(rawUrls);
+      }
+      function borrow() {
+        google.script.host.close();
+        google.script.run.showBorrowConfirm(rawUrls);
+      }
+      function done(res) {
+        document.getElementById('status').textContent = res.message || 'Done.';
+        setTimeout(function () { google.script.host.close(); }, 1200);
+      }
+      function fail(err) {
+        document.getElementById('status').textContent = err.message;
+      }
+    </script>
+  </body>
+</html>

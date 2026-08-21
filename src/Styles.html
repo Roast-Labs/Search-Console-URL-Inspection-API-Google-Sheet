@@ -1,0 +1,73 @@
+<style>
+  :root {
+    --blue: #1a73e8;
+    --blue-dark: #174ea6;
+    --text: #202124;
+    --muted: #5f6368;
+    --line: #dadce0;
+    --bg: #f8f9fa;
+    --ok: #188038;
+    --warn: #e37400;
+    --err: #c5221f;
+  }
+  html, body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: #fff;
+  }
+  body { padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  h2 { font-size: 14px; margin: 16px 0 8px; }
+  p { line-height: 1.45; margin: 0 0 10px; }
+  .muted { color: var(--muted); }
+  label { display: block; font-weight: bold; margin: 10px 0 4px; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font: inherit;
+  }
+  textarea { min-height: 120px; font-family: Consolas, monospace; }
+  button {
+    background: var(--blue);
+    color: #fff;
+    border: 0;
+    border-radius: 4px;
+    padding: 8px 14px;
+    font: inherit;
+    cursor: pointer;
+    margin: 4px 6px 4px 0;
+  }
+  button.secondary { background: #fff; color: var(--blue); border: 1px solid var(--line); }
+  button.danger { background: var(--err); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .row { margin: 8px 0; }
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 10px 0;
+  }
+  .warn { background: #fef7e0; border-color: #f9ab00; }
+  .err { background: #fce8e6; border-color: #f28b82; }
+  .ok { background: #e6f4ea; border-color: #81c995; }
+  .hidden { display: none; }
+  .step { display: none; }
+  .step.active { display: block; }
+  .stat { font-size: 22px; font-weight: bold; color: var(--blue-dark); }
+  ul { padding-left: 18px; }
+  .site {
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    margin: 6px 0;
+    cursor: pointer;
+  }
+  .site:hover, .site.selected { border-color: var(--blue); background: #e8f0fe; }
+  .status { min-height: 1.2em; color: var(--muted); margin-top: 8px; }
+</style>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <div id="step1" class="step active">
+      <h1>Set up Index Checker</h1>
+      <p>This sheet inspects URLs with the Search Console <strong>URL Inspection API</strong> — not the Indexing API. You will authorise your own Google account, which must have access to the property.</p>
+      <p class="muted">Authorisation is requested the first time we list your properties.</p>
+      <button id="authBtn" onclick="begin()">Authorise and list properties</button>
+      <div id="status1" class="status"></div>
+    </div>
+
+    <div id="step2" class="step">
+      <h1>Choose a property</h1>
+      <p class="muted">One sheet per Search Console property. Script timezone: <span id="tz"></span></p>
+      <div id="sitesError" class="card err hidden"></div>
+      <div id="sites"></div>
+      <label for="runHour">Scheduled run hour (script timezone)</label>
+      <input id="runHour" type="number" min="0" max="23" value="3">
+      <button onclick="saveProperty()">Continue</button>
+      <div id="status2" class="status"></div>
+    </div>
+
+    <div id="step3" class="step">
+      <h1>Account check</h1>
+      <div id="accountNote" class="card"></div>
+      <p>Set the Apps Script project timezone to your local timezone (Project Settings) so <code>RUN_HOUR</code> fires when you expect.</p>
+      <button onclick="showStep(4)">Continue</button>
+    </div>
+
+    <div id="step4" class="step">
+      <h1>URLs</h1>
+      <p>Import a sitemap now, or skip and paste URLs into the <strong>URLs</strong> tab later.</p>
+      <button onclick="openSitemap()">Import from sitemap</button>
+      <button class="secondary" onclick="showStep(5)">Skip — I'll add URLs myself</button>
+    </div>
+
+    <div id="step5" class="step">
+      <h1>Finish</h1>
+      <p>This creates the daily trigger and optionally inspects up to 5 active URLs as a smoke test.</p>
+      <label><input type="checkbox" id="smoke" checked> Run a 5-URL smoke test</label>
+      <div class="row">
+        <button onclick="finish()">Create trigger and finish</button>
+      </div>
+      <div id="status5" class="status"></div>
+      <div id="smokeOut"></div>
+    </div>
+
+    <script>
+      var state = {};
+      var chosen = '';
+
+      function $(id) { return document.getElementById(id); }
+      function showStep(n) {
+        document.querySelectorAll('.step').forEach(function (el) { el.classList.remove('active'); });
+        $('step' + n).classList.add('active');
+      }
+      function begin() {
+        $('status1').textContent = 'Contacting Search Console…';
+        $('authBtn').disabled = true;
+        google.script.run
+          .withSuccessHandler(onBegin)
+          .withFailureHandler(function (err) {
+            $('authBtn').disabled = false;
+            $('status1').textContent = err.message || String(err);
+          })
+          .setupBegin();
+      }
+      function onBegin(data) {
+        state = data;
+        $('tz').textContent = data.timezone || '';
+        $('runHour').value = data.runHour;
+        if (data.sitesError) {
+          $('sitesError').classList.remove('hidden');
+          $('sitesError').textContent = data.sitesError;
+        }
+        var box = $('sites');
+        box.innerHTML = '';
+        (data.sites || []).forEach(function (s) {
+          var div = document.createElement('div');
+          div.className = 'site';
+          div.textContent = s.siteUrl + (s.permissionLevel ? '  (' + s.permissionLevel + ')' : '');
+          div.onclick = function () {
+            document.querySelectorAll('.site').forEach(function (el) { el.classList.remove('selected'); });
+            div.classList.add('selected');
+            chosen = s.siteUrl;
+          };
+          if (s.siteUrl === data.currentProperty) {
+            div.classList.add('selected');
+            chosen = s.siteUrl;
+          }
+          box.appendChild(div);
+        });
+        if (!(data.sites || []).length && !data.sitesError) {
+          box.textContent = 'No properties returned. Confirm this account is a user on a Search Console property.';
+        }
+        showStep(2);
+      }
+      function saveProperty() {
+        if (!chosen) {
+          $('status2').textContent = 'Select a property.';
+          return;
+        }
+        $('status2').textContent = 'Saving…';
+        google.script.run
+          .withSuccessHandler(function () {
+            var note = $('accountNote');
+            note.textContent = state.triggerCapNote || '';
+            note.className = 'card ' + (state.account && state.account.isConsumer ? 'warn' : 'ok');
+            showStep(3);
+          })
+          .withFailureHandler(function (err) { $('status2').textContent = err.message; })
+          .setupSaveProperty(chosen, $('runHour').value);
+      }
+      function finish() {
+        $('status5').textContent = 'Finishing…';
+        google.script.run
+          .withSuccessHandler(function (res) {
+            var html = '<div class="card ok"><p>Daily trigger created at hour ' + res.runHour +
+              ' (' + res.timezone + ').</p>';
+            if (res.smoke) {
+              html += '<p>' + res.smoke.message + '</p>';
+              if (res.smoke.results) {
+                html += '<ul>';
+                res.smoke.results.forEach(function (r) {
+                  html += '<li>' + escapeHtml(r.url) + ' — ' + escapeHtml(r.verdict) +
+                    (r.error ? ' (' + escapeHtml(r.error) + ')' : '') + '</li>';
+                });
+                html += '</ul>';
+              }
+            }
+            html += '<p>Setup will not auto-run again. Use the Index Checker menu if you need to change property.</p>';
+            html += '<button onclick="google.script.host.close()">Close</button></div>';
+            $('smokeOut').innerHTML = html;
+            $('status5').textContent = '';
+          })
+          .withFailureHandler(function (err) { $('status5').textContent = err.message; })
+          .setupFinish({ smokeTest: $('smoke').checked });
+      }
+      function openSitemap() {
+        google.script.run
+          .withSuccessHandler(function () {
+            google.script.run.showSitemapWizard();
+            google.script.host.close();
+          })
+          .setupFinish({ smokeTest: false });
+      }
+      function escapeHtml(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+    </script>
+  </body>
+</html>

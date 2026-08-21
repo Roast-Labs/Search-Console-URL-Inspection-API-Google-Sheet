@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <h1>Quota ledger</h1>
+    <p class="muted">Keyed on Pacific date, because Search Console resets at PT midnight.</p>
+    <div class="card">
+      <div>Pacific date: <strong id="date"></strong></div>
+      <div>Cap (DAILY_CAP): <strong id="cap"></strong> &nbsp; API limit: <span id="api"></span></div>
+      <div>Scheduled used: <strong id="sched"></strong></div>
+      <div>Ad-hoc used: <strong id="adhoc"></strong></div>
+      <div>Reserved for scheduled: <strong id="res"></strong></div>
+      <div>Remaining: <span class="stat" id="rem"></span></div>
+    </div>
+    <button onclick="google.script.host.close()">Close</button>
+    <script>
+      google.script.run.withSuccessHandler(function (q) {
+        document.getElementById('date').textContent = q.datePt;
+        document.getElementById('cap').textContent = q.cap;
+        document.getElementById('api').textContent = q.apiLimit;
+        document.getElementById('sched').textContent = q.scheduledUsed;
+        document.getElementById('adhoc').textContent = q.adhocUsed;
+        document.getElementById('res').textContent = q.reserved;
+        document.getElementById('rem').textContent = q.remaining;
+      }).viewQuotaPayload();
+    </script>
+  </body>
+</html>
