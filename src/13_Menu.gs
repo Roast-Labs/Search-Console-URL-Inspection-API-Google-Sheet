@@ -15,6 +15,7 @@ function onOpen() {
     .addItem('Install / reset daily trigger', 'resetTriggers')
     .addItem('Purge Old Data', 'purgeOldDataMenu')
     .addSeparator()
+    .addItem('Rebuild pivots', 'rebuildPivots')
     .addItem('Rebuild sheet structure', 'bootstrapTemplate')
     .addToUi();
 

@@ -14,6 +14,8 @@ var SHEETS = {
   DATA: 'Data',
   RUN_LOG: 'Run Log',
   PIVOTS: 'Pivots',
+  TRENDS: 'Pivots over time',
+  CHARTS: 'Charts',
   DASHBOARD: 'Dashboard',
   GLOSSARY: 'Glossary',
   QUEUE: '_Queue',

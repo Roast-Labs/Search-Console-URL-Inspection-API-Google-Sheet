@@ -207,7 +207,7 @@ function finalizeSuccess_(sliceResults) {
   deleteContinuationTriggers_();
   writeRunLog_({ status: RUN_STATUS.COMPLETE });
   setSetting_(SETTINGS.LATEST_RUN_ID, getProp_(PROPS.CURRENT_RUN_ID, ''));
-  updateDashboardBuckets_();
+  try { refreshPivotsSnapshot_(); } catch (e) { console.error(e); }
   sendRunAlert_();
   clearRunState_();
   showToast_('Run complete.', 'Index Checker');
