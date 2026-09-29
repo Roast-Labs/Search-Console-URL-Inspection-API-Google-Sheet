@@ -213,6 +213,33 @@ function inspectOne_(url) {
   return results[0];
 }
 
+function mapSiteEntries_(entries) {
+  return (entries || []).map(function (e) {
+    return {
+      siteUrl: e.siteUrl,
+      permissionLevel: e.permissionLevel || ''
+    };
+  });
+}
+
+function isGscApiDisabledError_(text) {
+  return /has not been used in project|ACCESS_NOT_CONFIGURED|accessNotConfigured|API has not been enabled|it is disabled|accessNotConfigured/i.test(String(text || ''));
+}
+
+function gcpLinkInstructions_() {
+  return (
+    'This copy uses your own Apps Script project, which starts on Google\'s Default Cloud project. ' +
+    'The Search Console API has to be enabled on a Cloud project you own — not the template owner\'s.\n\n' +
+    'Once per copy:\n' +
+    '1. In Google Cloud Console (same Google account), create or pick a project.\n' +
+    '2. Enable "Google Search Console API".\n' +
+    '3. Configure the OAuth consent screen (Internal, or External + Testing with your email as a test user).\n' +
+    '4. Copy the project NUMBER (digits only).\n' +
+    '5. In this spreadsheet: Extensions → Apps Script → Project Settings (gear) → Google Cloud Platform (GCP) Project → Change project → paste YOUR number.\n' +
+    '6. Close this dialog, reload the sheet, run Index Checker → Setup again, and authorise.'
+  );
+}
+
 function listSearchConsoleSites_() {
   const resp = gscFetch_(ENDPOINTS.SITES);
   const code = resp.getResponseCode();
@@ -220,26 +247,22 @@ function listSearchConsoleSites_() {
   let body = {};
   try {
     body = raw ? JSON.parse(raw) : {};
-  } catch (err) {
+  } catch (parseErr) {
     body = {};
   }
+  const apiMessage = extractApiError_(body, raw);
   if (code === 403) {
     throw new Error(
-      'Cannot list Search Console properties (403). The Search Console API is not enabled on this script\'s Cloud project. ' +
-      'Apps Script is currently on the Default GCP project, which cannot enable APIs. ' +
-      'Create a standard Google Cloud project, enable "Google Search Console API", then in Apps Script → Project Settings → Google Cloud Platform Project → Change project, paste the project NUMBER. Re-authorise afterwards.'
+      (isGscApiDisabledError_(apiMessage + ' ' + raw)
+        ? 'Cannot list Search Console properties — the API is not enabled on this script\'s Cloud project.\n\n'
+        : 'Cannot list Search Console properties (403). ' + (apiMessage ? apiMessage + '\n\n' : '')) +
+      gcpLinkInstructions_()
     );
   }
   if (code >= 400) {
-    throw new Error('sites.list failed (' + code + '): ' + extractApiError_(body, raw));
+    throw new Error('sites.list failed (' + code + '): ' + apiMessage);
   }
-  const entries = body.siteEntry || [];
-  return entries.map(function (e) {
-    return {
-      siteUrl: e.siteUrl,
-      permissionLevel: e.permissionLevel || ''
-    };
-  });
+  return mapSiteEntries_(body.siteEntry);
 }
 
 function listSubmittedSitemaps_(siteUrl) {

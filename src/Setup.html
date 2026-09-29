@@ -8,9 +8,11 @@
     <div id="step1" class="step active">
       <h1>Set up Index Checker</h1>
       <p>This sheet inspects URLs with the Search Console <strong>URL Inspection API</strong> — not the Indexing API. You will authorise your own Google account, which must have access to the property.</p>
+      <p class="muted">Before listing properties, link <strong>your</strong> Google Cloud project (Search Console API enabled) in Apps Script → Project Settings. This copy does not use the template owner’s Cloud project.</p>
       <p class="muted">Authorisation is requested the first time we list your properties.</p>
       <button id="authBtn" onclick="begin()">Authorise and list properties</button>
       <div id="status1" class="status"></div>
+      <div id="gcpHelp" class="card warn hidden"></div>
     </div>
 
     <div id="step2" class="step">
@@ -61,21 +63,30 @@
       function begin() {
         $('status1').textContent = 'Contacting Search Console…';
         $('authBtn').disabled = true;
+        $('gcpHelp').classList.add('hidden');
         google.script.run
           .withSuccessHandler(onBegin)
           .withFailureHandler(function (err) {
             $('authBtn').disabled = false;
-            $('status1').textContent = err.message || String(err);
+            showGcpHelp(err.message || String(err));
           })
           .setupBegin();
+      }
+      function showGcpHelp(msg) {
+        $('status1').textContent = '';
+        $('gcpHelp').classList.remove('hidden');
+        $('gcpHelp').style.whiteSpace = 'pre-wrap';
+        $('gcpHelp').textContent = msg;
+        $('authBtn').disabled = false;
+        $('authBtn').textContent = 'Try again after linking your Cloud project';
       }
       function onBegin(data) {
         state = data;
         $('tz').textContent = data.timezone || '';
         $('runHour').value = data.runHour;
         if (data.sitesError) {
-          $('sitesError').classList.remove('hidden');
-          $('sitesError').textContent = data.sitesError;
+          showGcpHelp(data.sitesError);
+          return;
         }
         var box = $('sites');
         box.innerHTML = '';

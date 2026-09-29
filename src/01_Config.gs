@@ -1,23 +1,31 @@
 /**
  * Named-range backed settings. Scripts must read by name, never by A1.
+ * File → Make a copy often drops named ranges while keeping the Settings tab;
+ * resolveSettingRange_ recreates them from column A labels.
  */
 
 function getSetting_(name) {
-  const ss = SpreadsheetApp.getActive();
-  const range = ss.getRangeByName(name);
-  if (!range) {
-    throw new Error('Named range missing: ' + name + '. Run bootstrapTemplate() to repair the sheet.');
-  }
-  return range.getValue();
+  return resolveSettingRange_(name).getValue();
 }
 
 function setSetting_(name, value) {
+  resolveSettingRange_(name).setValue(value);
+}
+
+function resolveSettingRange_(name) {
   const ss = SpreadsheetApp.getActive();
-  const range = ss.getRangeByName(name);
-  if (!range) {
-    throw new Error('Named range missing: ' + name + '. Run bootstrapTemplate() to repair the sheet.');
+  let range = ss.getRangeByName(name);
+  if (range) return range;
+  if (!sheetStructureReady_(ss)) ensureSheetStructure_(ss);
+  else ensureNamedRanges_(ss);
+  range = ss.getRangeByName(name);
+  if (range) return range;
+  const settings = ss.getSheetByName(SHEETS.SETTINGS);
+  if (settings) {
+    const cell = findSettingsValueCell_(settings, name);
+    if (cell) return cell;
   }
-  range.setValue(value);
+  throw new Error('Setting missing: ' + name + '. Use Index Checker → Rebuild sheet structure.');
 }
 
 function getPropertyUrl_() {
@@ -52,9 +60,13 @@ function isTruthySetting_(name) {
 
 function getSheet_(name) {
   const ss = SpreadsheetApp.getActive();
-  const sheet = ss.getSheetByName(name);
+  let sheet = ss.getSheetByName(name);
   if (!sheet) {
-    throw new Error('Sheet missing: ' + name + '. Run bootstrapTemplate() to repair the sheet.');
+    ensureSheetStructure_(ss);
+    sheet = ss.getSheetByName(name);
+  }
+  if (!sheet) {
+    throw new Error('Sheet missing: ' + name + '. Use Index Checker → Rebuild sheet structure.');
   }
   return sheet;
 }

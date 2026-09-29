@@ -15,6 +15,40 @@ function bootstrapTemplate() {
   }
 }
 
+function sheetStructureReady_(ss) {
+  ss = ss || SpreadsheetApp.getActive();
+  return !!(ss.getSheetByName(SHEETS.SETTINGS) &&
+    ss.getSheetByName(SHEETS.URLS) &&
+    ss.getSheetByName(SHEETS.DATA));
+}
+
+/**
+ * Create tabs + named ranges if this is a blank copy (script only, no Settings tab).
+ * Safe to call from Setup. Does not rebuild when Settings/URLs/Data already exist.
+ */
+function ensureSheetStructure_(ss) {
+  ss = ss || SpreadsheetApp.getActive();
+  if (sheetStructureReady_(ss)) {
+    ensureNamedRanges_(ss);
+    return true;
+  }
+  if (ensureSheetStructure_.running) return false;
+  const lock = LockService.getDocumentLock();
+  lock.waitLock(API_LIMITS.LOCK_WAIT_MS);
+  try {
+    if (sheetStructureReady_(ss)) {
+      ensureNamedRanges_(ss);
+      return true;
+    }
+    ensureSheetStructure_.running = true;
+    bootstrapLocked_(ss);
+    return true;
+  } finally {
+    ensureSheetStructure_.running = false;
+    try { lock.releaseLock(); } catch (e) {}
+  }
+}
+
 function bootstrapLocked_(ss) {
   const existing = ss.getSheets();
   if (existing.length === 1 && ['Sheet1', 'Sheet 1'].indexOf(existing[0].getName()) !== -1) {
@@ -146,27 +180,50 @@ function writeSettings_(sheet) {
 }
 
 function createNamedRanges_(ss, settings, urls, data) {
-  const map = {
-    PROPERTY_URL: settings.getRange('B4'),
-    DAILY_CAP: settings.getRange('B5'),
-    BATCH_SIZE: settings.getRange('B6'),
-    RUN_HOUR: settings.getRange('B7'),
-    ALERT_EMAIL: settings.getRange('B8'),
-    ALERT_ON_CHANGE_ONLY: settings.getRange('B9'),
-    DATA_RETENTION_DAYS: settings.getRange('B10'),
-    LANGUAGE_CODE: settings.getRange('B11'),
-    ADHOC_BORROW_ALLOWED: settings.getRange('B12'),
-    TODAY_PT: settings.getRange('B13'),
-    LATEST_RUN_ID: settings.getRange('B14'),
-    URL_COL: urls.getRange('A2:A'),
-    URL_ACTIVE: urls.getRange('B2:B'),
-    URL_FREQUENCY: urls.getRange('C2:C'),
-    URL_LAST_VERDICT: urls.getRange('I2:I'),
-    URL_ORPHANED: urls.getRange('J2:J'),
-    DATA_TABLE: data.getRange('A:V')
-  };
+  applyNamedRanges_(ss, settings, urls, data, true);
+}
+
+/**
+ * File → Make a copy / /copy often keeps tabs but drops named ranges.
+ * Recreate any that are missing from Settings column A + URLs/Data sheets.
+ */
+function ensureNamedRanges_(ss) {
+  ss = ss || SpreadsheetApp.getActive();
+  const settings = ss.getSheetByName(SHEETS.SETTINGS);
+  if (!settings) return false;
+  applyNamedRanges_(ss, settings, ss.getSheetByName(SHEETS.URLS), ss.getSheetByName(SHEETS.DATA), false);
+  return !!ss.getRangeByName(SETTINGS.PROPERTY_URL) || !!findSettingsValueCell_(settings, SETTINGS.PROPERTY_URL);
+}
+
+function findSettingsValueCell_(settings, name) {
+  const last = Math.max(settings.getLastRow(), 1);
+  const keys = settings.getRange(1, 1, last, 1).getValues();
+  for (let i = 0; i < keys.length; i++) {
+    if (String(keys[i][0]).trim() === name) return settings.getRange(i + 1, 2);
+  }
+  return null;
+}
+
+function applyNamedRanges_(ss, settings, urls, data, overwrite) {
+  const map = {};
+  Object.keys(SETTINGS).forEach(function (key) {
+    const name = SETTINGS[key];
+    if (name === SETTINGS.SETUP_COMPLETE_CELL) return;
+    const cell = findSettingsValueCell_(settings, name);
+    if (cell) map[name] = cell;
+  });
+  if (urls) {
+    map.URL_COL = urls.getRange('A2:A');
+    map.URL_ACTIVE = urls.getRange('B2:B');
+    map.URL_FREQUENCY = urls.getRange('C2:C');
+    map.URL_LAST_VERDICT = urls.getRange('I2:I');
+    map.URL_ORPHANED = urls.getRange('J2:J');
+  }
+  if (data) map.DATA_TABLE = data.getRange('A:V');
+
   Object.keys(map).forEach(function (name) {
     const existing = ss.getRangeByName(name);
+    if (existing && !overwrite) return;
     if (existing) ss.removeNamedRange(name);
     ss.setNamedRange(name, map[name]);
   });

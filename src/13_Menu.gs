@@ -20,6 +20,7 @@ function onOpen() {
     .addToUi();
 
     try {
+      ensureNamedRanges_();
       refreshTodayPtCell_();
       compactUrlSheetIfNeeded_();
       if (isSetupComplete_()) refreshReservation_();
@@ -31,6 +32,7 @@ function onInstall(e) {
 }
 
 function showSetupWizard() {
+  try { ensureSheetStructure_(); } catch (e) {}
   const html = HtmlService.createTemplateFromFile('Setup')
     .evaluate()
     .setWidth(520)
@@ -40,6 +42,7 @@ function showSetupWizard() {
 }
 
 function setupBegin() {
+  try { ensureSheetStructure_(); } catch (e) {}
   const account = detectAccountType_();
   let sites = [];
   let sitesError = '';
@@ -48,6 +51,10 @@ function setupBegin() {
   } catch (err) {
     sitesError = err.message;
   }
+  let currentProperty = '';
+  let runHour = DEFAULTS.RUN_HOUR;
+  try { currentProperty = getPropertyUrl_(); } catch (e) {}
+  try { runHour = getRunHour_(); } catch (e) {}
   return {
     account: account,
     sites: sites,
@@ -55,8 +62,8 @@ function setupBegin() {
     triggerCapNote: account.isConsumer
       ? 'This looks like a consumer (gmail.com) account. Trigger total runtime is ~90 minutes/day, which will cap practical throughput well below 2,000 URLs. A Google Workspace account has ~6 hours/day.'
       : 'Workspace-class account detected. Daily trigger runtime allowance is ~6 hours.',
-    currentProperty: getPropertyUrl_(),
-    runHour: getRunHour_(),
+    currentProperty: currentProperty,
+    runHour: runHour,
     setupComplete: isSetupComplete_(),
     timezone: Session.getScriptTimeZone()
   };

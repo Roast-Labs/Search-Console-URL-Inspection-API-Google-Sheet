@@ -10,9 +10,7 @@ The endpoint this tool calls:
 POST https://searchconsole.googleapis.com/v1/urlInspection/index:inspect
 ```
 
-One URL per request. No batch endpoint exists. Auth is `UrlFetchApp` + `ScriptApp.getOAuthToken()` with scope `https://www.googleapis.com/auth/webmasters.readonly`. The Apps Script Advanced Service is not used.
-
-One sheet per Search Console property. Each user authorises with their own Google account.
+One URL per request. No batch endpoint exists. Inspection uses `UrlFetchApp` + `ScriptApp.getOAuthToken()` with scope `https://www.googleapis.com/auth/webmasters.readonly`. Each user authorises with their own Google account and links **their own** Cloud project.
 
 ---
 
@@ -24,11 +22,12 @@ GitHub is the source code. Users should never install from here.
 
 Then:
 
-1. Open **Index Checker → Setup**.
-2. Authorise your Google account when asked.
-3. Pick the Search Console property.
-4. Import a sitemap or paste URLs.
-5. Done. The daily trigger is created for you.
+1. Create or pick **your own** Google Cloud project (the template’s Cloud project does not copy). Enable **Google Search Console API**, set the OAuth consent screen, then in this copy: **Extensions → Apps Script → Project Settings → Change project** and paste **your** project number. Full steps are under [Switch off Default GCP](#switch-off-default-gcp).
+2. Open **Index Checker → Setup**.
+3. Authorise your Google account when asked.
+4. Pick the Search Console property.
+5. Import a sitemap or paste URLs.
+6. Done. The daily trigger is created for you.
 
 That `/copy` URL looks like:
 
@@ -98,7 +97,7 @@ A Workspace Marketplace add-on would be even easier for users (“Install” fro
 
 ### Switch off Default GCP
 
-`Default` is a hidden Cloud project. You cannot enable APIs on it, and this script calls Search Console via `UrlFetchApp`, so the API never turns on by itself. That is the 403 you see even when the Google account has Search Console access.
+`Default` is a hidden Cloud project. You cannot enable APIs on it from Cloud Console. Each `/copy` gets a **new** Apps Script project on Default GCP — the template owner’s Cloud project does **not** copy. Every user creates or links **their own** standard Cloud project.
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) with the **same Google account**.
 2. Create a project (or pick an existing one). Name it e.g. `gsc-index-checker`.
