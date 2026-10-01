@@ -18,7 +18,9 @@ One URL per request. No batch endpoint exists. Inspection uses `UrlFetchApp` + `
 
 GitHub is the source code. Users should never install from here.
 
-**[Make a copy of the template](TEMPLATE_COPY_URL)** ← replace this with your published `/copy` link
+Read more about how to use this tool - https://weareroast.com/resources/tools/google-indexing-api-tool/
+
+**[Make a copy of the template](https://docs.google.com/spreadsheets/d/1ZE47UnzW0toJzh8H9iPAiGGjTKuUK1EiszVji48zGBA/edit?gid=0#gid=0)** ← replace this with your published `/copy` link
 
 Then:
 
