@@ -117,7 +117,7 @@ Until you do this, `sites.list` and URL Inspection will 403.
 
 ---
 
-## Install from this repo (developers only)
+## Install from this repo e.g. run the code yourselve rather than copy the template
 
 For changing the code, not for handing to clients.
 
