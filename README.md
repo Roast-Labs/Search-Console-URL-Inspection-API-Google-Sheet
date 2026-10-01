@@ -20,7 +20,7 @@ GitHub is the source code. Users should never install from here.
 
 Read more about how to use this tool - https://weareroast.com/resources/tools/google-indexing-api-tool/
 
-**[Make a copy of the template](https://docs.google.com/spreadsheets/d/1ZE47UnzW0toJzh8H9iPAiGGjTKuUK1EiszVji48zGBA/edit?gid=0#gid=0)** ← replace this with your published `/copy` link
+**[Make a copy of the template](https://docs.google.com/spreadsheets/d/1ZE47UnzW0toJzh8H9iPAiGGjTKuUK1EiszVji48zGBA/edit?gid=0#gid=0)**
 
 Then:
 
